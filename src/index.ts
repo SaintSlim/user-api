@@ -1,8 +1,9 @@
-import express, { Request, Response} from 'express';
+import express, { NextFunction, Request, Response} from 'express';
 import bodyParser from 'body-parser';
-import User from '../models/user';
+import User from './models/user';
 import bycrpt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { authenticateToken } from './middleware/auth';
 
 const app = express();
 const port = process.env.PORT || 3000
@@ -65,13 +66,20 @@ app.delete('/delete/:id', async (req: Request, res: Response) => {
 app.post('/login', async (req: Request, res: Response) => {
     const { email, password } = req.body;
 
+    // CHeck if user input are not empty
+    if (!(email && password)) {
+       return res.status(400).send('All inpput is required')
+    }
+
+
+    // Check if user exists in our database
     const user = await User.findOne({ where: { email }});
 
     if (!user) {
         return res.status(401).json({ error: 'Authentication failed' })
     }
 
-    const passwordMatch = bycrpt.compare(password, user.password);
+    const passwordMatch = await bycrpt.compare(password, user.password);
 
     if (!passwordMatch) {
         return res.status(401).json({ error: 'Authentication failed' })
@@ -79,13 +87,27 @@ app.post('/login', async (req: Request, res: Response) => {
 
     // If user exists and password matches Generate jwt and send as response
     const token = jwt.sign({ id: user.id, email:user.email}, secretKey)
+    user.token = token;
     return res.json({ token })
 })
 
 // User logout endpoint
-app.post('/logout', async (req: Request, res: Response) => {
+app.post('/logout', authenticateToken, async (req: any, res: Response) => {
+
+    const { id, token } = req.user;
+
+    // Retrieve user by id
+    const user = await User.findByPk(id);
+
+    if (!user) {
+        return res.status(404).json({ error: 'User not found' })
+    }
+
     // Delete stored token or invalidate token by incrementing stored token by 1
-    res.json({ message: 'Logout successful'})
+    user.token += 1;
+    await user.save();
+
+    return res.json({ message: 'Logout successful'})
 })
 
 app.listen(port, () => {

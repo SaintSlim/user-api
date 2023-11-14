@@ -1,8 +1,21 @@
-import { Sequelize, DataTypes, Model } from 'sequelize';
+import { Sequelize, DataTypes, Model, InferAttributes, InferCreationAttributes } from 'sequelize';
 
 const sequelize = new Sequelize()
 
-const User = sequelize.define('User', {
+interface UserAttributes extends Model<InferAttributes<UserAttributes>, InferCreationAttributes<UserAttributes>> {
+    id: number,
+    title: string,
+    forename: string,
+    surname: string,
+    isAnAdministrator: boolean,
+    lastLoggedIn: Date,
+    loginEnabled: boolean,
+    email: string,
+    password: string,
+    token: string
+}
+
+const User = sequelize.define<UserAttributes>('User', {
     id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
@@ -17,7 +30,7 @@ const User = sequelize.define('User', {
     surname: {
         type: DataTypes.STRING
     },
-    isAnAdminstrator: {
+    isAnAdministrator: {
         type: DataTypes.BOOLEAN
     },
     lastLoggedIn: {
